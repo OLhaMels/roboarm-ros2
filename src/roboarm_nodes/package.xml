@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>roboarm_nodes</name><version>0.1.0</version>
+  <description>Task manager, camera, QR perception, video stream, and web teleoperation.</description>
+  <maintainer email="OLhaMels@users.noreply.github.com">OLhaMels</maintainer><license>Proprietary</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend><exec_depend>roboarm_interfaces</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend><exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend><exec_depend>action_msgs</exec_depend>
+  <exec_depend>control_msgs</exec_depend><exec_depend>controller_manager_msgs</exec_depend>
+  <exec_depend>moveit_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend><exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>python3-opencv</exec_depend><exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-flask</exec_depend><exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-pil</exec_depend><exec_depend>zbar</exec_depend><exec_depend>python3-gi</exec_depend>
+  <!-- stream_node also needs PyAV, which has no rosdep key: sudo apt install python3-av -->
+  <test_depend>python3-pytest</test_depend><test_depend>python3-qrcode</test_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

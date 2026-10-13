@@ -1,0 +1,9 @@
+.git
+build
+install
+log
+yocto
+docs
+*.log
+*.png
+docker/data

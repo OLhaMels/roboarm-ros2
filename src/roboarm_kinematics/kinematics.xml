@@ -1,0 +1,5 @@
+<library path="roboarm_kinematics">
+  <class name="roboarm_kinematics/CylindricalIK" type="roboarm_kinematics::CylindricalIK" base_class_type="kinematics::KinematicsBase">
+    <description>Exact two-axis cylindrical-arm inverse kinematics; rejects unreachable poses.</description>
+  </class>
+</library>

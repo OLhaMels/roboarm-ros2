@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>roboarm_hardware</name><version>0.1.0</version>
+  <description>Low speed A4988 GPIO ros2_control system.</description>
+  <maintainer email="OLhaMels@users.noreply.github.com">OLhaMels</maintainer><license>Proprietary</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>hardware_interface</depend><depend>pluginlib</depend><depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend><depend>libgpiod-dev</depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>

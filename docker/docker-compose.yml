@@ -1,0 +1,26 @@
+# Run on the Raspberry Pi, from the repository root:
+#   docker compose -f docker/docker-compose.yml up -d --build
+services:
+  perception:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: roboarm-perception
+    container_name: roboarm-perception
+    restart: unless-stopped
+    # DDS discovery and the TCP stream on :8554 need the host's network;
+    # shared memory between ROS nodes needs the host's IPC namespace.
+    network_mode: host
+    ipc: host
+    # libcamera opens /dev/media*, /dev/video* and /dev/dma_heap/*.
+    privileged: true
+    volumes:
+      - /dev:/dev
+      - /run/udev:/run/udev:ro
+      - ./perception.yaml:/config/perception.yaml:ro
+      - ./data:/data
+    environment:
+      ROS_DOMAIN_ID: "42"
+      # LOCALHOST: only nodes on this Pi see the topics. SUBNET to watch them
+      # from a laptop with ROS (same ROS_DOMAIN_ID there).
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST

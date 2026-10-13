@@ -1,0 +1,56 @@
+robot_description_kinematics:
+  arm:
+    kinematics_solver: roboarm_kinematics/CylindricalIK
+    kinematics_solver_timeout: 0.1
+robot_description_planning:
+  joint_limits:
+    z_joint:
+      has_velocity_limits: true
+      max_velocity: 0.008
+      has_acceleration_limits: true
+      max_acceleration: 0.01
+    gripper_joint:
+      has_velocity_limits: true
+      max_velocity: 0.003
+      has_acceleration_limits: true
+      max_acceleration: 0.005
+planning_pipelines: [ompl]
+default_planning_pipeline: ompl
+ompl:
+  # Tight tolerances because this group mixes metres and radians.
+  totg:
+    path_tolerance: 0.00001
+    min_angle_change: 0.000001
+    resample_dt: 0.05
+  planning_plugins: [ompl_interface/OMPLPlanner]
+  request_adapters:
+    - default_planning_request_adapters/ResolveConstraintFrames
+    - default_planning_request_adapters/ValidateWorkspaceBounds
+    - default_planning_request_adapters/CheckStartStateBounds
+    - default_planning_request_adapters/CheckStartStateCollision
+  response_adapters:
+    - default_planning_response_adapters/AddTimeOptimalParameterization
+    - default_planning_response_adapters/ValidateSolution
+    - default_planning_response_adapters/DisplayMotionPath
+  planner_configs:
+    RRTConnect: {type: geometric::RRTConnect, range: 0.0}
+  arm:
+    planner_configs: [RRTConnect]
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+moveit_simple_controller_manager:
+  controller_names: [arm_controller, gripper_controller]
+  arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [z_joint, rotation_joint]
+  gripper_controller:
+    type: GripperCommand
+    action_ns: gripper_cmd
+    default: true
+    joints: [gripper_joint]
+trajectory_execution:
+  allowed_execution_duration_scaling: 2.0
+  allowed_goal_duration_margin: 5.0
+  allowed_start_tolerance: 0.002
+publish_robot_description_semantic: true

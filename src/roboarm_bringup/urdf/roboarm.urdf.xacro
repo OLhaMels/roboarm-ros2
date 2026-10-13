@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="roboarm">
+  <xacro:arg name="hardware_mode" default="mock"/>
+  <xacro:arg name="hardware_config" default=""/>
+  <xacro:arg name="reference_confirmed" default="false"/>
+  <xacro:property name="hw" value="${xacro.load_yaml('$(arg hardware_config)')}"/>
+  <!-- Two-DOF cylindrical example. Dimensions must be measured. -->
+  <link name="base_link">
+    <visual><origin xyz="0 0 0.25"/><geometry><box size="0.10 0.10 0.50"/></geometry></visual>
+    <collision><origin xyz="0 0 0.25"/><geometry><box size="0.10 0.10 0.50"/></geometry></collision>
+  </link>
+  <link name="carriage"/>
+  <joint name="z_joint" type="prismatic">
+    <parent link="base_link"/><child link="carriage"/><origin xyz="0 0 ${hw['base_height']}"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${hw['joints']['z_joint']['lower']}" upper="${hw['joints']['z_joint']['upper']}" effort="30" velocity="${hw['joints']['z_joint']['max_velocity']}"/>
+  </joint>
+  <link name="arm_link">
+    <visual><origin xyz="${hw['arm_radius']/2 + 0.02} 0 0"/><geometry><box size="${hw['arm_radius'] - 0.04} 0.06 0.04"/></geometry></visual>
+    <collision><origin xyz="${hw['arm_radius']/2 + 0.02} 0 0"/><geometry><box size="${hw['arm_radius'] - 0.04} 0.06 0.04"/></geometry></collision>
+  </link>
+  <joint name="rotation_joint" type="revolute">
+    <parent link="carriage"/><child link="arm_link"/><axis xyz="0 0 1"/>
+    <limit lower="${hw['joints']['rotation_joint']['lower']}" upper="${hw['joints']['rotation_joint']['upper']}" effort="10" velocity="${hw['joints']['rotation_joint']['max_velocity']}"/>
+  </joint>
+  <link name="tool0">
+    <visual><geometry><cylinder radius="0.025" length="0.03"/></geometry></visual>
+    <collision><geometry><cylinder radius="0.025" length="0.03"/></geometry></collision>
+  </link>
+  <joint name="tool_fixed" type="fixed"><parent link="arm_link"/><child link="tool0"/><origin xyz="${hw['arm_radius']} 0 0"/></joint>
+  <link name="finger">
+    <visual><geometry><box size="0.01 0.01 0.04"/></geometry></visual>
+    <collision><geometry><box size="0.01 0.01 0.04"/></geometry></collision>
+  </link>
+  <joint name="gripper_joint" type="prismatic">
+    <parent link="tool0"/><child link="finger"/><origin xyz="0 0.03 -0.02"/>
+    <axis xyz="0 1 0"/><limit lower="0" upper="0.02" effort="5" velocity="0.003"/>
+  </joint>
+  <ros2_control name="ArmSystem" type="system">
+    <hardware>
+      <xacro:if value="${'$(arg hardware_mode)' == 'mock'}"><plugin>mock_components/GenericSystem</plugin></xacro:if>
+      <xacro:if value="${'$(arg hardware_mode)' == 'gpio'}"><plugin>roboarm_hardware/GpioSystem</plugin></xacro:if>
+      <param name="commissioned">${hw['commissioned']}</param>
+      <param name="reference_confirmed">$(arg reference_confirmed)</param>
+      <param name="gpio_chip">${hw['gpio_chip']}</param>
+      <param name="watchdog_seconds">${hw['watchdog_seconds']}</param>
+    </hardware>
+    <xacro:macro name="control_joint" params="name">
+      <xacro:property name="j" value="${hw['joints'][name]}"/>
+      <joint name="${name}">
+        <command_interface name="position"><param name="min">${j['lower']}</param><param name="max">${j['upper']}</param></command_interface>
+        <state_interface name="position"><param name="initial_value">${j['initial_position']}</param></state_interface>
+        <state_interface name="velocity"/>
+        <param name="direction_pin">${j['direction_pin']}</param><param name="step_pin">${j['step_pin']}</param>
+        <param name="ms1_pin">${j['ms1_pin']}</param><param name="ms2_pin">${j['ms2_pin']}</param><param name="ms3_pin">${j['ms3_pin']}</param>
+        <param name="enable_pin">${j['enable_pin']}</param>
+        <param name="min_limit_pin">${j['min_limit_pin']}</param><param name="max_limit_pin">${j['max_limit_pin']}</param>
+        <param name="direction_inverted">${j['direction_inverted']}</param>
+        <param name="steps_per_unit">${j['steps_per_unit']}</param><param name="max_step_rate">${j['max_step_rate']}</param>
+      </joint>
+    </xacro:macro>
+    <xacro:control_joint name="z_joint"/><xacro:control_joint name="rotation_joint"/>
+  </ros2_control>
+  <!-- No physical gripper installed. Always simulated, including GPIO arm mode. -->
+  <ros2_control name="ExampleGripper" type="system">
+    <hardware><plugin>mock_components/GenericSystem</plugin></hardware>
+    <joint name="gripper_joint">
+      <command_interface name="position"><param name="min">0</param><param name="max">0.02</param></command_interface>
+      <state_interface name="position"><param name="initial_value">0</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+</robot>

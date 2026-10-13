@@ -1,0 +1,31 @@
+camera_node:
+  ros__parameters:
+    # libcamera: CSI IMX219 through libcamerasrc (Yocto image, Pi 5)
+    # picamera2: Raspberry Pi OS;  v4l2: USB camera, `device` index
+    # images: loop the PNG/JPEG files at `images_path`, no camera needed
+    backend: libcamera
+    device: 0
+    images_path: ''
+    width: 640
+    height: 480
+    fps: 15.0
+    # Measured calibration at exactly width x height; zeros disable target poses.
+    camera_matrix: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    distortion: [0.0, 0.0, 0.0, 0.0, 0.0]
+vision_node:
+  ros__parameters:
+    # Side of the printed QR code's black square, without the white margin, in metres.
+    qr_size: 0.04
+    # Only codes matching this become /vision/target_pose; every code is still logged.
+    target_pattern: '^https?://(2qi\.us|[\w.-]*ifurn\.pro)/'
+    repeat_after: 5.0
+    record_parts: true
+    parts_csv: ~/.local/share/roboarm/parts.csv
+    # Camera extrinsics must come from a measured external TF publisher.
+    target_frame: base_link
+stream_node:
+  ros__parameters:
+    image_topic: /vision/debug_image
+    port: 8554
+    fps: 15.0
+    bitrate: 2000000

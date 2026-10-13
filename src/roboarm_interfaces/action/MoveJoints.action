@@ -1,0 +1,8 @@
+# Absolute targets, not increments. Routed through MoveIt and the task motion lock.
+float64 z
+float64 rotation
+---
+bool success
+string message
+---
+string stage

@@ -1,0 +1,13 @@
+# All distances in metres. Poses must be in base_link.
+geometry_msgs/PoseStamped pick_pose
+geometry_msgs/PoseStamped place_pose
+bool use_vision_target
+float64 clearance
+float64 open_position
+float64 closed_position
+---
+bool success
+string message
+---
+string stage
+float32 progress

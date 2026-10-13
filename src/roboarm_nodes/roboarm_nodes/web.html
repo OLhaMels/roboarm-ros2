@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roboarm control</title><style>
+body{font:16px system-ui;background:#101a26;color:#e3ecf7;margin:0 auto;max-width:1100px;padding:24px}
+h1{margin-bottom:6px}section{background:#192839;padding:20px;border-radius:12px;margin:18px 0}
+label{display:inline-flex;flex-direction:column;gap:5px;margin:8px;vertical-align:top;font-size:14px}
+input,select{background:#0d1825;color:#fff;border:1px solid #60758a;border-radius:5px;padding:9px;width:150px}
+input[type=checkbox]{width:auto}button{padding:11px 18px;margin:6px;border:0;border-radius:6px;background:#80d5c5;color:#09251f;cursor:pointer}
+.cancel{background:#ffad9a}pre{white-space:pre-wrap;overflow-wrap:anywhere}small,p{color:#bdd0e1}.message{position:sticky;top:0;background:#25384d;padding:12px;border-radius:6px;z-index:1}
+fieldset{border:1px solid #53677c;border-radius:8px;margin:12px 0} .grid{display:flex;flex-wrap:wrap} output{font-family:monospace}
+</style></head><body>
+<h1>Roboarm control</h1><p>Z travel + horizontal rotation · Gripper simulated</p>
+<div class="message" id="message">Connecting…</div>
+<section><h2>Motion</h2><p id="mode"></p><pre id="state"></pre>
+<label>Z position (metres)<input id="z" type="number" step="0.001" value="0.05"></label>
+<label>Arm angle (degrees)<input id="angle" type="number" step="1" value="0"></label>
+<button id="move">Move to position</button><button class="cancel" id="cancel">Cancel motion</button>
+<p>Cancel requests a controlled stop. It is not an electrical emergency stop. Position is estimated; manually reference both axes before enabling physical motion.</p></section>
+<section><h2>Simulated pick/place</h2>
+<label>Pick Z (m)<input id="pickZ" type="number" step="0.001" value="0.05"></label>
+<label>Pick angle (degrees)<input id="pickAngle" type="number" value="0"></label>
+<label>Place Z (m)<input id="placeZ" type="number" step="0.001" value="0.06"></label>
+<label>Place angle (degrees)<input id="placeAngle" type="number" value="30"></label>
+<label>Clearance (m)<input id="clearance" type="number" step="0.001" value="0.02"></label>
+<label>Use vision pick target<input id="vision" type="checkbox"></label><button id="pick">Run simulation</button>
+<p>X/Y follow the fixed arm radius. This demonstration does not model or attach a carried object.</p></section>
+<section><h2>Configuration</h2><p>Travel limits, reference positions and GPIO mapping. Save while idle, then stop and restart bringup to apply. Rotational configuration uses radians; motion controls above display degrees.</p>
+<div id="configuration"></div><button id="save">Save for next startup</button><button id="reload">Reload saved settings</button>
+<p id="configPath"></p></section>
+<section><h2>Controllers</h2><pre id="controllers"></pre>
+<select id="controller"><option>arm_controller</option><option>gripper_controller</option></select>
+<button id="activate">Activate</button><button id="deactivate">Deactivate</button><button id="refresh">Refresh</button></section>
+<script>
+const token='__TOKEN__', $=id=>document.getElementById(id), n=id=>Number($(id).value), radians=id=>n(id)*Math.PI/180;
+let saved, fields=[];
+async function api(path, data){
+  const response=await fetch('/api/'+path, data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':token},body:JSON.stringify(data)});
+  const result=await response.json(); if(!response.ok)throw Error(result.error||response.statusText);return result;
+}
+function message(text){$('message').textContent=text}
+function action(fn){return async()=>{try{const result=await fn();message(result.message||JSON.stringify(result))}catch(error){message(error.message)}}}
+$('move').onclick=action(()=>api('move',{z:n('z'),rotation:radians('angle')}));
+$('cancel').onclick=action(()=>api('cancel',{}));
+$('pick').onclick=action(()=>api('pick_place',{pick_z:n('pickZ'),pick_rotation:radians('pickAngle'),place_z:n('placeZ'),place_rotation:radians('placeAngle'),clearance:n('clearance'),use_vision:$('vision').checked}));
+function input(parent,obj,key,label){
+  const wrapper=document.createElement('label');wrapper.textContent=label;
+  const element=document.createElement('input'); const original=obj[key];
+  element.type=typeof original==='boolean'?'checkbox':typeof original==='number'?'number':'text';
+  if(element.type==='checkbox')element.checked=original;else element.value=original;
+  if(element.type==='number')element.step='any';
+  wrapper.appendChild(element);parent.appendChild(wrapper);fields.push(()=>{obj[key]=element.type==='checkbox'?element.checked:element.type==='number'?Number(element.value):element.value});
+}
+async function configuration(){
+ const result=await api('configuration');saved=result.saved;fields=[];$('configuration').replaceChildren();
+ for(const key of ['arm_radius','base_height','gpio_chip','watchdog_seconds','commissioned'])input($('configuration'),saved,key,key.replaceAll('_',' '));
+ for(const [name,joint] of Object.entries(saved.joints)){
+   const fieldset=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=name;fieldset.appendChild(legend);$('configuration').appendChild(fieldset);
+   for(const key of Object.keys(joint))input(fieldset,joint,key,key.replaceAll('_',' '));
+ }
+ $('configPath').textContent='Saved file: '+result.path+'. Active limits: '+JSON.stringify(Object.fromEntries(Object.entries(result.active.joints).map(([k,v])=>[k,[v.lower,v.upper]])));
+ return {message:'Settings loaded'};
+}
+$('reload').onclick=action(configuration);
+$('save').onclick=action(()=>{fields.forEach(f=>f());return api('configuration',saved)});
+async function controllers(){const data=await api('controllers');$('controllers').textContent=JSON.stringify(data.controllers,null,2);return {message:'Controllers refreshed'}}
+$('refresh').onclick=action(controllers);
+for(const id of ['activate','deactivate'])$(id).onclick=action(async()=>{const result=await api('controllers/switch',{name:$('controller').value,activate:id==='activate'});await controllers();return result});
+let polling=false;
+setInterval(async()=>{if(polling)return;polling=true;try{
+ const s=await api('status');$('mode').textContent='Arm: '+s.hardware_mode+' | Gripper: '+s.gripper+(s.status_fresh?'':' | STATUS STALE');
+ $('state').textContent=JSON.stringify({joints:s.joints,task:s.task,job:s.job},null,2);
+ $('pick').disabled=s.hardware_mode!=='mock';
+}catch(e){$('mode').textContent='Disconnected: '+e.message}finally{polling=false}},500);
+action(configuration)();action(controllers)();
+</script></body></html>

@@ -1,0 +1,17 @@
+[Unit]
+Description=VVA robot QR vision node (roboarm_nodes vision_node)
+# Frames come from vva-camera.service (or roboarm camera_node); only one
+# process may own the camera.
+After=vva-camera.service network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/vva-robot/environment
+# iFurn pages and parts.csv: the CSV lands in /root/.local/share/roboarm/
+# unless robot.yaml sets vision_node.parts_csv.
+ExecStart=/bin/sh -c '. /etc/profile.d/vva-ros.sh && exec ros2 run roboarm_nodes vision_node --ros-args --params-file /etc/vva-robot/robot.yaml'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

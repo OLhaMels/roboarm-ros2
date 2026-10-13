@@ -1,0 +1,44 @@
+commissioned: false
+reference_confirmed: false
+# Discover RP1 chip with gpioinfo; varies with kernel.
+gpio_chip: /dev/gpiochip4
+watchdog_seconds: 0.25
+arm_radius: 0.30
+base_height: 0.10
+joints:
+  z_joint:
+    lower: 0.0
+    upper: 0.30
+    max_velocity: 0.008
+    max_acceleration: 0.01
+    direction_pin: 20
+    step_pin: 21
+    ms1_pin: 17
+    ms2_pin: 27
+    ms3_pin: 22
+    enable_pin: -1
+    min_limit_pin: -1
+    max_limit_pin: -1
+    direction_inverted: false
+    # EXAMPLE: 200 full steps / 0.008 metre lead. Measure yours.
+    steps_per_unit: 25000.0
+    initial_position: 0.05
+    max_step_rate: 400.0
+  rotation_joint:
+    lower: -1.57
+    upper: 1.57
+    max_velocity: 0.10
+    max_acceleration: 0.10
+    direction_pin: -1
+    step_pin: -1
+    ms1_pin: -1
+    ms2_pin: -1
+    ms3_pin: -1
+    enable_pin: -1
+    min_limit_pin: -1
+    max_limit_pin: -1
+    direction_inverted: false
+    # EXAMPLE: 200 full steps / (2*pi), no gearbox. Units: steps/radian.
+    steps_per_unit: 31.8309886184
+    initial_position: 0.0
+    max_step_rate: 400.0

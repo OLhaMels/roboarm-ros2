@@ -1,0 +1,5 @@
+<library path="roboarm_hardware">
+  <class name="roboarm_hardware/GpioSystem" type="roboarm_hardware::GpioSystem" base_class_type="hardware_interface::SystemInterface">
+    <description>A4988 STEP/DIR full step driver using libgpiod v1.</description>
+  </class>
+</library>

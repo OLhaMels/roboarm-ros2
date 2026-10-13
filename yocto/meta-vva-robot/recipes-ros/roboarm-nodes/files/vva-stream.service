@@ -1,0 +1,12 @@
+[Unit]
+Description=VVA robot TCP video stream of /vision/debug_image (roboarm_nodes stream_node)
+After=vva-vision.service
+
+[Service]
+EnvironmentFile=/etc/vva-robot/environment
+ExecStart=/bin/sh -c '. /etc/profile.d/vva-ros.sh && exec ros2 run roboarm_nodes stream_node --ros-args --params-file /etc/vva-robot/robot.yaml'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

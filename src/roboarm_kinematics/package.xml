@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>roboarm_kinematics</name><version>0.1.0</version>
+  <description>Analytic IK for Z plus rotation.</description>
+  <maintainer email="OLhaMels@users.noreply.github.com">OLhaMels</maintainer><license>Proprietary</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>moveit_core</depend><depend>pluginlib</depend><depend>rclcpp</depend>
+  <depend>geometry_msgs</depend><depend>moveit_msgs</depend>
+  <export><build_type>ament_cmake</build_type></export>
+</package>
