@@ -6,6 +6,9 @@ setup(
                 ('share/roboarm_nodes', ['package.xml'])],
     package_data={'roboarm_nodes': ['web.html']},
     install_requires=['setuptools'], zip_safe=True,
+    # colcon test runs pytest only when it is declared here; without it, it
+    # falls back to unittest, finds no TestCase classes and fails with code 5.
+    extras_require={'test': ['pytest']},
     description='Two-axis robotic arm application nodes',
     entry_points={'console_scripts': [
         'task_manager_node = roboarm_nodes.task_manager:main',
