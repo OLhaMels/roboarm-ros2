@@ -25,6 +25,25 @@ def wait(node, future, timeout=30):
     return future.result()
 
 
+def send_valid(node, client, goal, state, log_path, seconds=10):
+    """Send a goal that must be accepted, retrying a transient rejection.
+
+    task_manager refuses goals while its joint feedback is momentarily
+    stale, which a busy CI runner hits now and then right after startup.
+    A goal still refused after `seconds` is a real failure; task_manager
+    logs the reason to the bringup log.
+    """
+    deadline = time.monotonic() + seconds
+    while True:
+        handle = wait(node, client.send_goal_async(goal))
+        if handle.accepted:
+            return handle
+        assert time.monotonic() < deadline, (
+            f'Valid goal rejected for {seconds} s; status {state.get("status")}; '
+            f'see "Goal rejected" in {log_path}')
+        rclpy.spin_once(node, timeout_sec=0.5)
+
+
 def pose(z):
     msg = PoseStamped()
     msg.header.frame_id = 'base_link'
@@ -87,18 +106,15 @@ def main():
             assert move.wait_for_server(timeout_sec=30) and pick.wait_for_server(timeout_sec=30)
             bad = wait(node, move.send_goal_async(MoveJoints.Goal(z=0.5, rotation=0.0)))
             assert not bad.accepted
-            handle = wait(node, move.send_goal_async(MoveJoints.Goal(z=0.051, rotation=0.05)))
-            assert handle.accepted
+            handle = send_valid(node, move, MoveJoints.Goal(z=0.051, rotation=0.05), state, log_path)
             result = wait(node, handle.get_result_async(), 60)
             assert result.status == GoalStatus.STATUS_SUCCEEDED and result.result.success, result
             goal = PickPlace.Goal(pick_pose=pose(0.15), place_pose=pose(0.151),
                                   clearance=0.001, open_position=0.01, closed_position=0.0)
-            handle = wait(node, pick.send_goal_async(goal))
-            assert handle.accepted
+            handle = send_valid(node, pick, goal, state, log_path)
             result = wait(node, handle.get_result_async(), 120)
             assert result.status == GoalStatus.STATUS_SUCCEEDED and result.result.success, result
-            handle = wait(node, move.send_goal_async(MoveJoints.Goal(z=0.25, rotation=0.0)))
-            assert handle.accepted
+            handle = send_valid(node, move, MoveJoints.Goal(z=0.25, rotation=0.0), state, log_path)
             deadline = time.monotonic() + 0.5
             while time.monotonic() < deadline:
                 rclpy.spin_once(node, timeout_sec=0.05)

@@ -68,7 +68,12 @@ class TaskManager(Node):
             'gripper': 'simulated', 'position_feedback': 'commanded pulses only' if self.mode == 'gpio' else 'mock'})))
 
     def reserve(self):
-        if self.fault or time.monotonic() - self.state_time > 2 or not self.motion_lock.acquire(False):
+        age = time.monotonic() - self.state_time
+        if self.fault or age > 2 or not self.motion_lock.acquire(False):
+            # Say why: a rejected goal otherwise reaches the client with no reason at all.
+            reason = (f'fault: {self.fault}' if self.fault else
+                      f'joint states are {age:.1f} s old' if age > 2 else 'another motion is running')
+            self.get_logger().warning(f'Goal rejected: {reason}')
             return GoalResponse.REJECT
         return GoalResponse.ACCEPT
 
