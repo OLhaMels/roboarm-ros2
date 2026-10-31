@@ -8,6 +8,9 @@ the camera: frames come from camera_node's topic. Per frame:
                           iFurn -> parts.csv -> /vision/part (JSON), off-thread
       allowed code     -> solvePnP on its four corners (code side `qr_size`)
                           -> TF into `target_frame` -> /vision/target_pose
+    no QR that gave    -> after `ocr_quiet` s, every `ocr_interval` s: the
+    the part's data       printed label text (labels.LabelReader, Tesseract,
+                          off-thread) -> parts.csv -> /vision/part (JSON)
     overlay (Osd)      -> /vision/debug_image, only while someone subscribes
 
 A code becomes a target only if its payload matches `target_pattern`: the
@@ -35,7 +38,8 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from tf2_geometry_msgs import do_transform_pose_stamped
 
 from roboarm_nodes.overlay import Osd
-from roboarm_nodes.parts import PartRecorder
+from roboarm_nodes.labels import LabelReader, Tesseract
+from roboarm_nodes.parts import PartRecorder, append_row
 from roboarm_nodes.qr import Scanner
 
 # Integer luma weights (BT.601, /256): the cost of turning an RGB frame into
@@ -100,6 +104,8 @@ class Vision(Node):
             'max_reprojection_px': 3.0, 'repeat_after': 5.0,
             'record_parts': True, 'parts_csv': '~/.local/share/roboarm/parts.csv', 'fetch_timeout': 10.0,
             'osd_hold': 5.0,
+            'label_ocr': True, 'ocr_languages': 'ukr+rus+eng', 'ocr_interval': 3.0, 'ocr_quiet': 2.0,
+            'ocr_upscale': 1.5, 'ocr_budget': 45.0,
         }
         for name, value in defaults.items():
             self.declare_parameter(name, value)
@@ -134,9 +140,32 @@ class Vision(Node):
             self.recorder = PartRecorder(path, timeout=param('fetch_timeout'),
                                          on_row=self.on_part, log=self.log).start()
             self.get_logger().info(f'Part links are recorded in {path}')
+        self.parts_csv = os.path.expanduser(param('parts_csv')) if param('record_parts') else None
+        # Labels without a usable QR code: read their printed text instead.
+        self.labels = None
+        self.last_target = self.last_offer = -math.inf
+        if not self.demo and param('label_ocr'):
+            try:
+                tesseract = Tesseract(param('ocr_languages'))
+                self.labels = LabelReader(tesseract, self.on_label, log=self.log_label,
+                                          upscale=param('ocr_upscale'), budget=param('ocr_budget')).start()
+            except RuntimeError as exc:
+                self.get_logger().error(f'Label OCR disabled: {exc}')
 
     def log(self, level, text):
         getattr(self.get_logger(), level)(f'[part] {text}')
+
+    def log_label(self, level, text):
+        getattr(self.get_logger(), level)(f'[label] {text}')
+
+    def on_label(self, row, text, orientation):
+        # Runs on the label reader thread.
+        if self.parts_csv:
+            try:
+                append_row(self.parts_csv, row)
+            except OSError as exc:
+                self.get_logger().warning(f'[label] cannot write {self.parts_csv}: {exc}')
+        self.part_publisher.publish(String(data=json.dumps(row, ensure_ascii=False)))
 
     def on_part(self, row):
         # Runs on the recorder thread; publishing from there is safe in rclpy.
@@ -159,7 +188,8 @@ class Vision(Node):
             return
         try:
             frame = pixels(msg)
-            codes = self.scanner.scan_gray(gray(msg, frame), msg.width, msg.height)
+            plane = gray(msg, frame)
+            codes = self.scanner.scan_gray(plane, msg.width, msg.height)
         except ValueError as exc:
             self.get_logger().warning(f'Frame skipped: {exc}', throttle_duration_sec=5.0)
             return
@@ -170,8 +200,36 @@ class Vision(Node):
         if targets:
             # The largest code in view is the nearest one: that is the part to pick.
             self.publish_target(max(targets, key=lambda c: area(c.corners)), msg)
+        self.offer_label(plane, codes)
         if self.debug_publisher.get_subscription_count():
             self.publish_debug(msg, frame, codes)
+
+    def offer_label(self, plane, codes):
+        """Hand a frame to OCR when no code in view gives the part's data.
+
+        A QR link to an iFurn part page gives the full record, so OCR waits
+        while such a page is being fetched and stays out while a recorded
+        one is in view. Labels with no QR, with one zbar cannot read, or
+        with a link that leads elsewhere (q.ifurn.pro short links do) are
+        read as text: after `ocr_quiet` seconds without a useful code, at
+        most every `ocr_interval` seconds, never while the previous frame
+        is still being read.
+        """
+        if self.labels is None:
+            return
+        now = time.monotonic()
+        states = {self.recorder.part_state(c.text) if self.recorder else 'none' for c in codes}
+        if 'recorded' in states:
+            self.last_target = now
+            return
+        if 'pending' in states:
+            return
+        if (now - self.last_target < self.get_parameter('ocr_quiet').value
+                or now - self.last_offer < self.get_parameter('ocr_interval').value
+                or self.labels.busy):
+            return
+        self.last_offer = now
+        self.labels.offer(plane.copy())
 
     def is_new(self, code):
         """True once per payload, then again only after it has been out of
@@ -252,6 +310,8 @@ class Vision(Node):
     def destroy_node(self):
         if self.recorder is not None:
             self.recorder.stop()
+        if self.labels is not None:
+            self.labels.stop()
         self.scanner.close()
         return super().destroy_node()
 

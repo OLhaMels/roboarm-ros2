@@ -46,6 +46,11 @@ ROS_EXEC_DEPENDS = " \
     gstreamer1.0-plugins-base-videoconvert \
     gstreamer1.0-plugins-base-app \
     libcamera-gst \
+    tesseract \
+    tesseract-lang-ukr \
+    tesseract-lang-rus \
+    tesseract-lang-eng \
+    tesseract-lang-osd \
 "
 # stream_node only. PyAV is not in meta-python for Scarthgap; without it the
 # other nodes still run and stream_node exits with an ImportError.

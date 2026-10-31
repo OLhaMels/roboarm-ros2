@@ -21,6 +21,13 @@ vision_node:
     repeat_after: 5.0
     record_parts: true
     parts_csv: /data/parts.csv
+    # Labels whose QR is missing, unreadable or not an iFurn part link: read
+    # the printed text (Tesseract) after ocr_quiet s, at most every ocr_interval s.
+    label_ocr: true
+    ocr_languages: ukr+rus+eng
+    ocr_quiet: 2.0
+    ocr_interval: 3.0
+    ocr_budget: 45.0
     # Camera extrinsics must come from a measured external TF publisher.
     target_frame: base_link
 stream_node:

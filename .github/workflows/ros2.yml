@@ -10,7 +10,7 @@ jobs:
         shell: bash
         run: |
           apt-get update
-          apt-get install -y python3-colcon-common-extensions python3-rosdep libgpiod-dev python3-pytest python3-av
+          apt-get install -y python3-colcon-common-extensions python3-rosdep libgpiod-dev python3-pytest python3-av tesseract-ocr tesseract-ocr-ukr tesseract-ocr-rus tesseract-ocr-osd
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy --skip-keys libgpiod-dev
       - name: Build

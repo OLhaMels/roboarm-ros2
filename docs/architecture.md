@@ -56,7 +56,7 @@ Additional endpoints needed for the implementation:
 | `/robot_arm/move_joints` | `roboarm_interfaces/action/MoveJoints` action | Absolute two-axis UI motion, serialized with pick/place |
 | `/robot_arm/status` | `std_msgs/msg/String` topic carrying JSON | Task stage, busy/fault state, hardware mode and simulated-gripper status |
 | `/vision/qr` | `std_msgs/msg/String` topic carrying JSON | Each new QR read: payload, quality, corners, whether it is a target |
-| `/vision/part` | `std_msgs/msg/String` topic carrying JSON | Each part page recorded to `parts.csv` |
+| `/vision/part` | `std_msgs/msg/String` topic carrying JSON | Each part recorded to `parts.csv`, from its iFurn page (`source: qr`) or its printed label text (`source: label`) |
 | `/vision/debug_image` | `sensor_msgs/msg/Image` topic | Scanned frame with QR outline and readout; published only while subscribed |
 
 QR perception details, the mapping from the old program and Yocto packaging: [perception-qr.md](perception-qr.md).

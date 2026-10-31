@@ -167,6 +167,7 @@ Unlike hardware YAML, perception YAML follows the ROS node-parameter structure: 
 | `vision_node.target_pattern` | Regular expression; only matching payloads become `/vision/target_pose`. Default accepts `2qi.us` and `*.ifurn.pro` links. |
 | `vision_node.repeat_after` | Seconds a code must be out of view before it is reported again; default 5. |
 | `vision_node.record_parts`, `parts_csv`, `fetch_timeout` | Follow scanned links to iFurn part pages and append rows to the CSV; default `~/.local/share/roboarm/parts.csv`. |
+| `vision_node.label_ocr`, `ocr_languages`, `ocr_quiet`, `ocr_interval`, `ocr_budget`, `ocr_upscale` | Read label text when no QR in view gave the part's data: on/off (default on), Tesseract languages (`ukr+rus+eng`), seconds without such a QR before reading (2), minimum seconds between reads (3), time limit per frame (45), maximum enlargement (1.5). Needs `tesseract-ocr` with ukr, rus and osd data. |
 | `stream_node.image_topic`, `port`, `fps`, `bitrate` | Optional TCP video stream started with `video_stream:=true`; defaults `/vision/debug_image`, 8554, 15, 2000000. Needs `python3-av`. |
 | `vision_node.target_frame` | Frame for published targets; keep `base_link` for compatibility with the task manager. |
 | `vision_node.marker_to_tool_z` | Optional height offset from detected marker centre to tool target in base-frame Z; default 0.0. |

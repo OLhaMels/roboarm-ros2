@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
         gstreamer1.0-tools gstreamer1.0-plugins-base gir1.2-gstreamer-1.0 python3-gi \
         python3-numpy python3-pil python3-opencv python3-av libzbar0t64 fonts-dejavu-core \
+        tesseract-ocr tesseract-ocr-ukr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-osd \
         ros-jazzy-tf2-ros-py ros-jazzy-tf2-geometry-msgs ros-jazzy-rmw-cyclonedds-cpp \
         python3-colcon-common-extensions \
     && rm -rf /var/lib/apt/lists/*

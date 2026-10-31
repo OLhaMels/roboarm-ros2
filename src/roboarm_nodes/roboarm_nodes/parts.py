@@ -52,6 +52,9 @@ CSV_FIELDS = [
     "edge_sides", "edge_material", "edge_thickness_mm", "edge_width_mm",
     "edge_jointing", "edge_curved", "edge_processing",
     "operations", "status",
+    # "qr" (iFurn page) or "label" (OCR of the printed sticker); the label
+    # path also keeps how many sides are banded and the raw text it read.
+    "source", "edge_count", "label_text",
 ]
 
 SIDES = {"t": "top", "b": "bottom", "l": "left", "r": "right"}
@@ -200,7 +203,7 @@ def read_part(link, timeout=10.0):
     match = PART_URL.match(url)
     if not match:
         raise NotAPart("leads to {}, not to a part page".format(url))
-    row = {"scanned_at": scanned_at, "qr_code": link, "url": url,
+    row = {"scanned_at": scanned_at, "source": "qr", "qr_code": link, "url": url,
            "order_code": match.group("order"), "part_id": match.group("part"),
            "piece": match.group("piece") or ""}
     page_row, drawing_url = parse_part_page(page)
@@ -222,6 +225,10 @@ def read_part(link, timeout=10.0):
     return row
 
 
+# The QR recorder and the label reader each write from a thread of their own.
+_csv_lock = threading.Lock()
+
+
 def append_row(path, row):
     """Append one row to the CSV, writing the header first if it is new.
 
@@ -230,6 +237,11 @@ def append_row(path, row):
     it does not name are left out, and columns it names that are unknown
     here stay empty.
     """
+    with _csv_lock:
+        _append_row(path, row)
+
+
+def _append_row(path, row):
     fields = CSV_FIELDS
     new = not os.path.exists(path) or os.path.getsize(path) == 0
     if not new:
@@ -256,6 +268,10 @@ class PartRecorder:
     retried the next time it is scanned; one that leads somewhere other
     than a part page is not looked up again.
 
+    part_state(text) tells the label reader whether a code in view already
+    gave (or may still give) the part's data, so OCR only reads labels whose
+    QR leads nowhere useful.
+
     `on_row(row)` is called on the worker thread after a row is written;
     `log(level, text)` receives what the original printed, with level one of
     "info" or "warning".
@@ -269,6 +285,7 @@ class PartRecorder:
         self._queue = queue.Queue()
         self._done = set()
         self._done_lock = threading.Lock()
+        self._state = {}  # url -> "pending" | "recorded" | "none"
         self._thread = threading.Thread(target=self._run, daemon=True,
                                         name="part-recorder")
 
@@ -293,7 +310,19 @@ class PartRecorder:
                 self._log("info", "{}: part already recorded this run".format(url))
                 return
             self._done.add(url)
+            self._state[url] = "pending"
         self._queue.put(url)
+
+    def part_state(self, text):
+        """"recorded", "pending" (being fetched) or "none" for a scanned code."""
+        with self._done_lock:
+            return self._state.get(text.strip(), "none")
+
+    def _settle(self, url, state, retry=False):
+        with self._done_lock:
+            self._state[url] = state
+            if retry:
+                self._done.discard(url)
 
     def _run(self):
         while True:
@@ -303,20 +332,20 @@ class PartRecorder:
             try:
                 row = read_part(url, self.timeout)
             except NotAPart as error:
+                self._settle(url, "none")
                 self._log("info", "{}: not recorded, {}".format(url, error))
                 continue
             except (OSError, ValueError) as error:
-                with self._done_lock:
-                    self._done.discard(url)
+                self._settle(url, "none", retry=True)
                 self._log("warning", "{}: FAILED, not recorded: {}".format(url, error))
                 continue
             try:
                 append_row(self.csv_path, row)
             except OSError as error:
-                with self._done_lock:
-                    self._done.discard(url)
+                self._settle(url, "none", retry=True)
                 self._log("warning", "cannot write {}: {}".format(self.csv_path, error))
                 continue
+            self._settle(url, "recorded")
             self._log("info", "order {} part #{}: {}x{}x{} mm x{}, {}, edges: {} -> {}".format(
                 row.get("order_id") or row.get("order_code"), row.get("part_id"),
                 row.get("length_mm"), row.get("width_mm"), row.get("thickness_mm"),

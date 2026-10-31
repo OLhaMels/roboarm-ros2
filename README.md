@@ -118,6 +118,8 @@ Stopping the GPIO system or a fault disables the drivers. A vertical axis that c
 
 `video_stream:=true` adds `stream_node`, which serves the annotated `/vision/debug_image` as low-latency H.264 MPEG-TS on TCP port 8554 (`ffplay -fflags nobuffer -flags low_delay -framedrop tcp://PI_ADDRESS:8554`). It needs `sudo apt install python3-av`.
 
+Labels without a usable QR code (none, unreadable, or a link that is not an iFurn part page) are read as text instead: Tesseract OCR (`ukr+rus+eng`, `sudo apt install tesseract-ocr tesseract-ocr-ukr tesseract-ocr-rus tesseract-ocr-osd`) runs off-thread in `vision_node`, and the sizes, part number, quantity, customer, material and edge banding go to the same `parts.csv` and `/vision/part` with `source: label`.
+
 Details, testing without hardware, and the Yocto recipe: [docs/perception-qr.md](docs/perception-qr.md).
 
 ## Verify ROS communication

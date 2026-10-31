@@ -9,3 +9,6 @@ ros_smoke.log
 perception_smoke.log
 perception_smoke_stream.png
 docker/data/
+# Label photos carry customers' names: kept locally for tests/label_ocr_eval.py only.
+tests/labels/
+label_smoke.log
